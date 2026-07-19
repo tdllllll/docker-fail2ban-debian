@@ -49,24 +49,23 @@ for filter in ${filters}; do
   ln -sf "/data/filter.d/${filter}" "/etc/fail2ban/filter.d/"
 done
 
-iptablesLegacy=0
 if [ "$IPTABLES_MODE" = "auto" ] && ! iptables -L &> /dev/null; then
-  echo "WARNING: iptables-nft is not supported by the host, falling back to iptables-legacy"
-  iptablesLegacy=1
+  echo "WARNING: iptables is not supported by the host"
+elif [ "$IPTABLES_MODE" = "nft" ]; then
+  echo "WARNING: iptables-nft enforced"
+  update-alternatives --set iptables /usr/sbin/iptables-nft
+  update-alternatives --set ip6tables /usr/sbin/ip6tables-nft
 elif [ "$IPTABLES_MODE" = "legacy" ]; then
   echo "WARNING: iptables-legacy enforced"
-  iptablesLegacy=1
-fi
-if [ "$iptablesLegacy" -eq 1 ]; then
-  ln -sf /usr/sbin/xtables-legacy-multi /usr/sbin/iptables
-  ln -sf /usr/sbin/xtables-legacy-multi /usr/sbin/iptables-save
-  ln -sf /usr/sbin/xtables-legacy-multi /usr/sbin/iptables-restore
-  ln -sf /usr/sbin/xtables-legacy-multi /usr/sbin/ip6tables
-  ln -sf /usr/sbin/xtables-legacy-multi /usr/sbin/ip6tables-save
-  ln -sf /usr/sbin/xtables-legacy-multi /usr/sbin/ip6tables-restore
+  update-alternatives --set iptables /usr/sbin/iptables-legacy
+  update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 fi
 
 iptables -V
 nft -v
+
+if ! command -v journalctl &> /dev/null; then
+  echo "WARNING: systemd-journalctl not found"
+fi
 
 exec "$@"

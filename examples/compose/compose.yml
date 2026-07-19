@@ -2,7 +2,7 @@ name: fail2ban
 
 services:
   fail2ban:
-    image: crazymax/fail2ban:latest
+    image: tdllllll/fail2ban:latest
     container_name: fail2ban
     network_mode: "host"
     cap_add:
@@ -11,6 +11,8 @@ services:
     volumes:
       - "./data:/data"
       - "/var/log:/var/log:ro"
+      - "/run/systemd/journal:/run/systemd/journal:ro"
+      - "/etc/machine-id:/etc/machine-id:ro"
     env_file:
       - "./fail2ban.env"
     restart: always

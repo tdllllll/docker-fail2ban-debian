@@ -1,44 +1,28 @@
 # syntax=docker/dockerfile:1
 
-ARG FAIL2BAN_VERSION=1.1.0
-ARG ALPINE_VERSION=3.23
+ARG DEBIAN_VERSION=trixie-slim
 
-FROM --platform=$BUILDPLATFORM scratch AS src
-ARG FAIL2BAN_VERSION
-ADD "https://github.com/fail2ban/fail2ban.git#${FAIL2BAN_VERSION}" .
+FROM debian:${DEBIAN_VERSION}
 
-FROM alpine:${ALPINE_VERSION}
-RUN --mount=from=src,target=/tmp/fail2ban,rw \
-  apk add --no-cache \
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     bash \
-    curl \
-    grep \
     ipset \
     iptables \
-    iptables-legacy \
-    kmod \
     nftables \
-    openssh-client-default \
-    python3 \
-    py3-dnspython \
-    py3-inotify \
-    py3-setuptools \
+    python3-dnspython \
+    python3-inotify \
+    systemd \
     tzdata \
-    wget \
     whois \
-  && apk add --no-cache -t build-dependencies \
-    build-base \
-    py3-pip \
-    python3-dev \
-  && cd /tmp/fail2ban \
-  && 2to3 -w --no-diffs bin/* fail2ban \
-  && python3 setup.py install --without-tests \
-  && apk del build-dependencies \
-  && rm -rf /etc/fail2ban/jail.d /root/.cache
+    fail2ban \
+  && apt-get autoremove -y \
+  && apt-get clean \
+  && rm -rf \
+    /var/lib/apt/lists/* \
+    /root/.cache
 
 COPY entrypoint.sh /entrypoint.sh
-
-ENV TZ="UTC"
 
 VOLUME [ "/data" ]
 
