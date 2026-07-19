@@ -15,7 +15,7 @@ echo ${TZ} > /etc/timezone
 # Init
 echo "Initializing files and folders..."
 mkdir -p /data/db /data/action.d /data/filter.d /data/jail.d
-ln -sf /data/jail.d /etc/fail2ban/
+ln -sf /data/jail.d/* /etc/fail2ban/jail.d/
 
 # Fail2ban conf
 echo "Setting Fail2ban configuration..."
