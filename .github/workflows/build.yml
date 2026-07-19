@@ -29,8 +29,8 @@ jobs:
       push: ${{ github.event_name != 'pull_request' }}
       set-meta-labels: true
       meta-images: |
-        crazymax/fail2ban
-        ghcr.io/crazy-max/fail2ban
+        tdllllll/fail2ban
+        ghcr.io/tdllllll/fail2ban
       meta-tags: |
         type=match,pattern=(.*)-r,group=1
         type=ref,event=pr
@@ -38,12 +38,12 @@ jobs:
       meta-labels: |
         org.opencontainers.image.title=Fail2ban
         org.opencontainers.image.description=Intrusion prevention software framework that protects computer servers from brute-force attacks
-        org.opencontainers.image.vendor=CrazyMax
+        org.opencontainers.image.vendor=tdllllll
     secrets:
       registry-auths: |
         - registry: docker.io
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         - registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
