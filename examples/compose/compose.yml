@@ -4,15 +4,18 @@ services:
   fail2ban:
     image: tdllllll/fail2ban:latest
     container_name: fail2ban
-    network_mode: "host"
+    network_mode: host
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    read_only: true
     volumes:
-      - "./data:/data"
-      - "/var/log:/var/log:ro"
-      - "/run/systemd/journal:/run/systemd/journal:ro"
-      - "/etc/machine-id:/etc/machine-id:ro"
+      - ./data:/data
+      - ./data/run:/var/run/fail2ban
+      - ./data/lib:/var/lib/fail2ban
+      - /var/log:/var/log:ro
+      - /run/systemd/journal:/run/systemd/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
     env_file:
       - "./fail2ban.env"
     restart: always

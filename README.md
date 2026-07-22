@@ -6,6 +6,10 @@ Most files are unchanged from upstream. Please refer to their [README.md](https:
 
 WARNING: Performance, disk usage, functionality and stability are not guaranteed to be identical to upstream.
 
+## Changes
+
+1. `read_only` is enabled, so any specified `F2B_LOG_TARGET` will be written to `/data` directory.
+
 ## Credits
 
 - [crazy-max/docker-fail2ban](https://github.com/crazy-max/docker-fail2ban)

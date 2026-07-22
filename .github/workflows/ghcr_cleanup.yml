@@ -1,4 +1,4 @@
-name: Cleanup GHCR old images
+name: cleanup
 
 on:
   schedule:
