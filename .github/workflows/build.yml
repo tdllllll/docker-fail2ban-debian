@@ -4,46 +4,139 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 on:
   push:
     branches:
-      - 'master'
+      - "master"
     tags:
-      - '*'
+      - "*"
+
   pull_request:
 
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: "Target tag for the image"
+        required: false
+        type: string
+        default: ""
+
+  workflow_call:
+    inputs:
+      target_tag:
+        description: "Target tag for the image"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
 jobs:
-  build:
-    uses: docker/github-builder/.github/workflows/bake.yml@5f637c833aa76bc99372a1dc9a6f8bcd8056fb85 # v1.12.0
+  cleanup:
+    uses: ./.github/workflows/cleanup.yml
+
     permissions:
-      contents: read # same as global permissions
+      packages: write
+
+    with:
+      keep: 5
+
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  build:
+    needs: cleanup
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read # to fetch the repository content
       id-token: write # for signing attestation(s) with GitHub OIDC Token
       packages: write # required to push to GHCR
-    with:
-      setup-qemu: true
-      target: image-all
-      output: image
-      push: ${{ github.event_name != 'pull_request' }}
-      set-meta-labels: true
-      meta-images: |
-        tdllllll/fail2ban
-        ghcr.io/tdllllll/fail2ban
-      meta-tags: |
-        type=match,pattern=(.*)(?:-r)?,group=1
-        type=ref,event=pr
-        type=edge
-      meta-labels: |
-        org.opencontainers.image.title=Fail2ban
-        org.opencontainers.image.description=Intrusion prevention software framework that protects computer servers from brute-force attacks
-        org.opencontainers.image.vendor=tdllllll
-    secrets:
-      registry-auths: |
-        - registry: docker.io
+
+    env:
+      TARGET_TAG: ${{ inputs.target_tag || '' }}
+
+    steps:
+      - name: Checkout the specified tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          # If empty checkout the main branch
+          ref: ${{ env.TARGET_TAG }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7
+        with:
+          registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        - registry: ghcr.io
+
+      - name: Login to GHCR
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7
+        with:
+          registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
+        with:
+          images: |
+            tdllllll/fail2ban
+            ghcr.io/tdllllll/fail2ban
+          tags: |
+            type=match,pattern=(.*)(?:-r)?,group=1
+            type=ref,event=pr
+            type=raw,enable=${{ env.TARGET_TAG != '' }},value=${{ env.TARGET_TAG }}
+            type=edge,enable=${{ env.TARGET_TAG == '' }}
+          labels: |
+            org.opencontainers.image.title=Fail2ban
+            org.opencontainers.image.description=Intrusion prevention software framework that protects computer servers from brute-force attacks
+            org.opencontainers.image.vendor=tdllllll
+
+      - name: Delete previous edge images
+        # We are now using env.TARGET_TAG == '' to determine an 'edge' push
+        if: env.TARGET_TAG == ''
+        run: |
+          set -e
+
+          echo "Login Docker Hub"
+
+          TOKEN=$(curl -s -u "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
+            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ secrets.DOCKERHUB_USERNAME }}/fail2ban:pull,push,delete" \
+            | jq -r .token)
+
+          DIGEST=$(curl -sI -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+            https://registry-1.docker.io/v2/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/manifests/edge \
+            | grep -i Docker-Content-Digest | tr -d '\r' | awk '{print $2}')
+
+          echo "Deleting manifest with digest: $DIGEST"
+
+          curl -s -X DELETE \
+            -H "Authorization: Bearer $TOKEN" \
+            https://registry-1.docker.io/v2/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/manifests/$DIGEST
+
+          echo "Deleted image: ${{ secrets.DOCKERHUB_USERNAME }}/fail2ban@$DIGEST"
+
+      - name: Build and push
+        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b
+        with:
+          targets: image-all
+          push: ${{ github.event_name != 'pull_request' }}
+          files: |
+            ./docker-bake.hcl
+            cwd://${{ steps.meta.outputs.bake-file }}

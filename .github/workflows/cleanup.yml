@@ -2,13 +2,30 @@ name: cleanup
 
 on:
   schedule:
-    - cron: "0 2 * * 0"
+    - cron: "0 2 1 * *"
+
   workflow_dispatch:
     inputs:
       keep:
         description: "Number of tags to keep"
         required: false
-        default: "5"
+        type: number
+        default: 5
+
+  workflow_call:
+    inputs:
+      keep:
+        description: "Number of tags to keep"
+        required: false
+        type: number
+        default: 5
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+permissions: {}
 
 jobs:
   cleanup:
@@ -17,16 +34,18 @@ jobs:
     permissions:
       packages: write
 
+    env:
+      KEEP: ${{ inputs.keep }}
+
     steps:
       - name: Delete old GHCR versions
-        uses: actions/delete-package-versions@v5.0.0
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
         with:
           package-name: "fail2ban"
           package-type: "container"
-          min-versions-to-keep: ${{ github.event.inputs.keep }}
+          min-versions-to-keep: ${{ env.KEEP }}
 
       - name: Delete old Docker Hub versions
-        shell: bash
         run: |
           set -e
 
@@ -39,65 +58,39 @@ jobs:
             https://hub.docker.com/v2/users/login/ \
             | jq -r .token)
 
-          if [ "$TOKEN" = "null" ]; then
+          if [ -z "$TOKEN" ]; then
             echo "Docker Hub login failed"
             exit 1
           fi
 
-          echo "Fetch tags"
+          echo "Fetching tags..."
 
           TAGS=$(curl -s \
-            -H "Authorization: JWT ${TOKEN}" \
+            -H "Authorization: Bearer $TOKEN" \
             "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/tags?page_size=100" \
-            | jq -r '.results | sort_by(.last_updated) | reverse | .[].name')
+            | jq -r '(.results // []) | sort_by(.last_updated) | reverse | .[].name')
 
-          if [ "$TAGS" = "null" ]; then
-            echo "Didn't find any tags"
-            exit 1
+          if [ -z "$TAGS" ]; then
+            echo "Didn't find any tags. Skipping..."
+            exit 0
           fi
 
           echo "Current tags:"
           echo "$TAGS"
 
-          DELETE=$(echo "$TAGS" | tail -n +$((${{ github.event.inputs.keep }}+1)))
+          TO_DELETE=$(echo "$TAGS" | tail -n +$(($KEEP+1)))
 
-          for TAG in $DELETE
+          for TAG in $TO_DELETE
           do
             if [ "$TAG" = "latest" ] || [ "$TAG" = "edge" ]; then
               continue
             fi
 
-            echo "Deleting ${TAG}"
+            echo "Deleting $TAG"
 
             curl -s \
               -X DELETE \
-              -H "Authorization: JWT ${TOKEN}" \
-              "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/tags/${TAG}/"
+              -H "Authorization: Bearer $TOKEN" \
+              "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/tags/$TAG/"
 
           done
-
-          echo "Get untagged manifests"
-
-          curl -s \
-            -H "Authorization: JWT ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/images/" \
-          | jq -r '
-              .results[]
-              | select(.tag == null)
-              | .digest
-            ' \
-          > digests.txt
-
-
-          while read digest
-          do
-            [ -z "$digest" ] && continue
-
-            echo "Deleting digest ${digest}"
-
-            curl -s \
-              -X DELETE \
-              -H "Authorization: JWT ${TOKEN}" \
-              "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/images/${digest}/"
-
-          done < digests.txt
