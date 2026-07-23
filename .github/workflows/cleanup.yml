@@ -9,6 +9,14 @@ on:
         description: "Number of tags to keep"
         required: false
         default: "5"
+  workflow_call:
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+permissions: {}
 
 jobs:
   cleanup:
@@ -19,35 +27,41 @@ jobs:
 
     steps:
       - name: Delete old GHCR versions
-        uses: actions/delete-package-versions@v5.0.0
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
         with:
           package-name: "fail2ban"
           package-type: "container"
-          min-versions-to-keep: ${{ github.event.inputs.keep }}
+          min-versions-to-keep: ${{ github.event.inputs.keep || '5' }}
 
       - name: Delete old Docker Hub versions
-        shell: bash
+        env:
+          KEEP: ${{ github.event.inputs.keep || '5' }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'master' }}
         run: |
           set -e
 
           echo "Login Docker Hub"
 
-          TOKEN=$(curl -s \
+          HUB_TOKEN=$(curl -s \
             -H "Content-Type: application/json" \
             -X POST \
             -d "{\"username\":\"${{ secrets.DOCKERHUB_USERNAME }}\",\"password\":\"${{ secrets.DOCKERHUB_TOKEN }}\"}" \
             https://hub.docker.com/v2/users/login/ \
             | jq -r .token)
 
-          if [ "$TOKEN" = "null" ]; then
+          REGISTRY_TOKEN=$(curl -s -u "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
+            "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$REPO:pull,push,delete" \
+            | jq -r .token)
+
+          if [ -z "${HUB_TOKEN}" ] || [ "${HUB_TOKEN}" = "null" ] || [ -z "${REGISTRY_TOKEN}" ] || [ "${REGISTRY_TOKEN}" = "null" ]; then
             echo "Docker Hub login failed"
             exit 1
           fi
 
-          echo "Fetch tags"
+          echo "Fetching tags..."
 
           TAGS=$(curl -s \
-            -H "Authorization: JWT ${TOKEN}" \
+            -H "Authorization: Bearer $HUB_TOKEN" \
             "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/tags?page_size=100" \
             | jq -r '.results | sort_by(.last_updated) | reverse | .[].name')
 
@@ -59,45 +73,59 @@ jobs:
           echo "Current tags:"
           echo "$TAGS"
 
-          DELETE=$(echo "$TAGS" | tail -n +$((${{ github.event.inputs.keep }}+1)))
+          TO_DELETE=$(echo "$TAGS" | tail -n +$((KEEP+1)))
 
-          for TAG in $DELETE
+          for TAG in $TO_DELETE
           do
-            if [ "$TAG" = "latest" ] || [ "$TAG" = "edge" ]; then
+            if [ "$TAG" = "edge" ]; then
               continue
             fi
 
-            echo "Deleting ${TAG}"
+            DIGEST=$(curl -sI -H "Authorization: Bearer $REGISTRY_TOKEN" \
+              -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+              https://registry-1.docker.io/v2/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/manifests/$TAG \
+              | grep -i Docker-Content-Digest | tr -d '\r' | awk '{print $2}')
 
-            curl -s \
-              -X DELETE \
-              -H "Authorization: JWT ${TOKEN}" \
-              "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/tags/${TAG}/"
+            echo "Deleting manifest with digest: $DIGEST"
+
+            curl -s -X DELETE \
+              -H "Authorization: Bearer $REGISTRY_TOKEN" \
+              https://registry-1.docker.io/v2/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/manifests/$DIGEST
 
           done
 
-          echo "Get untagged manifests"
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            if [ "${GITHUB_REF_NAME}" = "${DEFAULT_BRANCH}" ]; then
+              # type=edge
+              TARGET_TAG="edge"
+            else
+              # type=match,pattern=(.*)(?:-r)?,group=1
+              TARGET_TAG=$(echo "${GITHUB_REF_NAME}" | sed -E 's/(.*)-r?$/\1/')
+            fi
+          elif [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            # type=ref,event=pr
+            TARGET_TAG="${GITHUB_REF_NAME}"
+          fi
 
-          curl -s \
-            -H "Authorization: JWT ${TOKEN}" \
-            "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/images/" \
-          | jq -r '
-              .results[]
-              | select(.tag == null)
-              | .digest
-            ' \
-          > digests.txt
+          if [ "$TARGET_TAG" = "" ]; then
+            echo "Error parsing target tag"
+            exit 1
+          fi
 
+          echo "Target tag:"
+          echo "$TARGET_TAG"
 
-          while read digest
-          do
-            [ -z "$digest" ] && continue
+          if [ "$TARGET_TAG" = "edge" ]; then
+            echo "Deleting previous edge images..."
 
-            echo "Deleting digest ${digest}"
+            DIGEST=$(curl -sI -H "Authorization: Bearer $REGISTRY_TOKEN" \
+              -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+              https://registry-1.docker.io/v2/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/manifests/$TARGET_TAG} \
+              | grep -i Docker-Content-Digest | tr -d '\r' | awk '{print $2}')
 
-            curl -s \
-              -X DELETE \
-              -H "Authorization: JWT ${TOKEN}" \
-              "https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/images/${digest}/"
+            curl -s -X DELETE \
+              -H "Authorization: Bearer $REGISTRY_TOKEN" \
+              https://registry-1.docker.io/v2/${{ secrets.DOCKERHUB_USERNAME }}/fail2ban/manifests/$DIGEST
+          fi
 
-          done < digests.txt
+          echo "Done."

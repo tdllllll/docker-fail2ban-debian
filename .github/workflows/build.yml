@@ -4,8 +4,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 on:
   push:
@@ -16,10 +15,17 @@ on:
   pull_request:
 
 jobs:
+  delete:
+    uses: ./.github/workflows/cleanup.yml
+    permissions:
+      packages: write
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   build:
     uses: docker/github-builder/.github/workflows/bake.yml@5f637c833aa76bc99372a1dc9a6f8bcd8056fb85 # v1.12.0
     permissions:
-      contents: read # same as global permissions
+      contents: read # to fetch the repository content
       id-token: write # for signing attestation(s) with GitHub OIDC Token
       packages: write # required to push to GHCR
     with:
