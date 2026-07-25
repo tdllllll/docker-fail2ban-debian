@@ -2,12 +2,22 @@ name: fail2ban
 
 services:
   fail2ban:
-    image: ${FAIL2BAN_IMAGE:-tdllllll/fail2ban}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TZ: "UTC"
+        F2B_LOG_TARGET: "STDOUT"
+        F2B_LOG_LEVEL: "INFO"
+        F2B_DB_PURGE_AGE: "1d"
+        IPTABLES_MODE: "auto"
+        F2B_NO_DEB_DEFAULTS: ""
     container_name: ${FAIL2BAN_CONTAINER:-fail2ban}
     network_mode: host
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    read_only: true
     volumes:
       - ./data:/data
       - ./data/run:/var/run/fail2ban
@@ -15,8 +25,6 @@ services:
       - /var/log:/var/log:ro
       - /run/systemd/journal:/run/systemd/journal:ro
       - /etc/machine-id:/etc/machine-id:ro
-    env_file:
-      - "./fail2ban.env"
     environment:
       - "IPTABLES_MODE=${IPTABLES_MODE:-auto}"
     restart: always
