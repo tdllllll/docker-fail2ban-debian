@@ -31,7 +31,8 @@ RUN sed -i "s|logtarget =.*|logtarget = /data/${F2B_LOG_TARGET#/}|g" \
       /etc/fail2ban/fail2ban.conf
 
 RUN if [ -n "${F2B_NO_DEB_DEFAULTS}" ]; then \
-      rm -f /etc/fail2ban/jail.d/defaults-debian.conf
+      rm -f /etc/fail2ban/jail.d/defaults-debian.conf; \
+    fi
 
 # Copy custom configs
 COPY data/action.d/ /etc/fail2ban/action.d/
