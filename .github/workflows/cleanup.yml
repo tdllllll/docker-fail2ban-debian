@@ -2,12 +2,12 @@ name: cleanup
 
 on:
   schedule:
-    - cron: "0 2 1 * *"
+    - cron: '0 2 1 * *'
 
   workflow_dispatch:
     inputs:
       keep:
-        description: "Number of tags to keep"
+        description: 'Number of tags to keep'
         required: false
         type: number
         default: 5
@@ -15,7 +15,7 @@ on:
   workflow_call:
     inputs:
       keep:
-        description: "Number of tags to keep"
+        description: 'Number of tags to keep'
         required: false
         type: number
         default: 5
@@ -38,25 +38,24 @@ jobs:
       KEEP: ${{ inputs.keep }}
 
     steps:
-      - name: Get latest release tag
-        id: latest
-        run: |
-          TAG=$(curl -s \
-            -H "Authorization: Bearer ${{ github.token }}" \
-            https://api.github.com/repos/${{ github.repository }}/releases/latest \
-            | jq -r '.tag_name')
-
-          echo "Latest tag: $TAG"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Delete old GHCR versions
+      - name: Delete old GHCR versions - part 1
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
         continue-on-error: true
         with:
-          package-name: "fail2ban"
-          package-type: "container"
-          min-versions-to-keep: 1
-          ignore-versions: "latest"
+          package-name: 'fail2ban'
+          package-type: 'container'
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: 'true'
+
+      # Using delete-package-versions, we need to do it twice: first to delete all untagged
+      # versions, second to retain the specified numbers of versions
+      - name: Delete old GHCR versions - part 2
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
+        continue-on-error: true
+        with:
+          package-name: 'fail2ban'
+          package-type: 'container'
+          min-versions-to-keep: ${{ env.KEEP }}
 
       - name: Delete old Docker Hub versions
         run: |
