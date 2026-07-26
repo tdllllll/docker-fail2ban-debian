@@ -17,8 +17,6 @@ if [ "$(cat /etc/timezone)" != "${TZ}" ]; then
 fi
 
 # Init
-mkdir -p /tmp/run/fail2ban
-
 if [ ! -d "/data/db" ]; then
   echo "WARNING: missing db folder"
 fi

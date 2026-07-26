@@ -24,5 +24,5 @@ services:
       - /run/systemd/journal:/run/systemd/journal:ro
       - /etc/machine-id:/etc/machine-id:ro
     tmpfs:
-      - /tmp
+      - /tmp/run/fail2ban
     restart: always
