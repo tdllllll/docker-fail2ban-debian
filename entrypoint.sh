@@ -17,8 +17,10 @@ if [ "$(cat /etc/timezone)" != "${TZ}" ]; then
 fi
 
 # Init
-if [ ! -d "/data/run" ] || [ ! -d "/data/lib" ] || [ ! -d "/data/db" ]; then
-  echo "WARNING: missing folders"
+mkdir -p /tmp/run/fail2ban
+
+if [ ! -d "/data/db" ]; then
+  echo "WARNING: missing db folder"
 fi
 
 if [ "$IPTABLES_MODE" = "auto" ] && ! iptables -L &> /dev/null; then
