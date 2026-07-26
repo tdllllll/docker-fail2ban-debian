@@ -25,6 +25,10 @@ fi
 
 if [ "$IPTABLES_MODE" = "auto" ] && ! iptables -L &> /dev/null; then
   echo "WARNING: iptables is not supported by the host"
+elif [ "$IPTABLES_MODE" = "nft" ]; then
+  echo "WARNING: iptables-nft enforced"
+elif [ "$IPTABLES_MODE" = "legacy" ]; then
+  echo "WARNING: iptables-legacy enforced"
 fi
 
 if [ ! command -v journalctl &> /dev/null ]; then

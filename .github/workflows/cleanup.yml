@@ -49,17 +49,14 @@ jobs:
           echo "Latest tag: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-          safe_tag=$(echo "${TAG#[vV]}" | sed 's/\./\\./g')
-          echo "safe_tag=$safe_tag" >> "$GITHUB_OUTPUT"
-
       - name: Delete old GHCR versions
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
         continue-on-error: true
         with:
           package-name: "fail2ban"
           package-type: "container"
-          min-versions-to-keep: 0
-          ignore-versions: "^${{ steps.latest.outputs.safe_tag }}$"
+          min-versions-to-keep: 1
+          ignore-versions: "latest"
 
       - name: Delete old Docker Hub versions
         run: |

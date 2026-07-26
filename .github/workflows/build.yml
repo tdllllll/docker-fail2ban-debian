@@ -61,7 +61,7 @@ jobs:
       packages: write # required to push to GHCR
 
     env:
-      TARGET_TAG: ${{ inputs.target_tag || '' }}
+      TARGET_TAG: ${{ inputs.target_tag }}
 
     steps:
       - name: Checkout the specified tag
@@ -109,7 +109,7 @@ jobs:
 
       - name: Delete previous edge images
         # We are now relying on env.TARGET_TAG == '' to determine an 'edge' push
-        if: env.TARGET_TAG == ''
+        if: env.TARGET_TAG == '' && github.ref_type == 'branch' && github.event_name != 'pull_request'
         run: |
           set -e
 
