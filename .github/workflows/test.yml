@@ -14,7 +14,7 @@ on:
   pull_request:
 
 env:
-  BUILD_TAG: fail2ban:test
+  BUILD_TAG: fail2ban:edge
   CONTAINER_NAME: fail2ban
 
 jobs:
