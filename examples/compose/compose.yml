@@ -20,9 +20,9 @@ services:
     read_only: true
     volumes:
       - ./data:/data
-      - ./data/run:/var/run/fail2ban
-      - ./data/lib:/var/lib/fail2ban
       - /var/log:/var/log:ro
       - /run/systemd/journal:/run/systemd/journal:ro
       - /etc/machine-id:/etc/machine-id:ro
+    tmpfs:
+      - /tmp
     restart: always

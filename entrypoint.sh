@@ -7,6 +7,8 @@ if [ "${F2B_LOG_LEVEL}" == "DEBUG" ]; then
   echo "F2B_DB_PURGE_AGE: ${F2B_DB_PURGE_AGE}"
   echo "IPTABLES_MODE: ${IPTABLES_MODE}"
   echo "F2B_NO_DEB_DEFAULTS: ${F2B_NO_DEB_DEFAULTS}"
+  iptables -V
+  nft -v
 fi
 
 # Timezone
@@ -22,9 +24,6 @@ fi
 if [ "$IPTABLES_MODE" = "auto" ] && ! iptables -L &> /dev/null; then
   echo "WARNING: iptables is not supported by the host"
 fi
-
-iptables -V
-nft -v
 
 if [ ! command -v journalctl &> /dev/null ]; then
   echo "WARNING: systemd-journalctl not found"

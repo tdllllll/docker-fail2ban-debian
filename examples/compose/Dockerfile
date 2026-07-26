@@ -28,6 +28,10 @@ RUN sed -i "s|logtarget =.*|logtarget = /data/${F2B_LOG_TARGET#/}|g" \
     && sed -i "s/dbpurgeage =.*/dbpurgeage = ${F2B_DB_PURGE_AGE}/g" \
       /etc/fail2ban/fail2ban.conf \
     && sed -i "s/#allowipv6 =.*/allowipv6 = auto/g" \
+      /etc/fail2ban/fail2ban.conf \
+    && sed -i "s|socket =.*|socket = /tmp/run/fail2ban/fail2ban.sock|g" \
+      /etc/fail2ban/fail2ban.conf \
+    && sed -i "s|pidfile =.*|socket = /tmp/run/fail2ban/fail2ban.pid|g" \
       /etc/fail2ban/fail2ban.conf
 
 RUN if [ -n "${F2B_NO_DEB_DEFAULTS}" ]; then \
