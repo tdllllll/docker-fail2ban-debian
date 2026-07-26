@@ -40,6 +40,7 @@ jobs:
     steps:
       - name: Delete old GHCR versions
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55
+        continue-on-error: true
         with:
           package-name: "fail2ban"
           package-type: "container"
