@@ -10,7 +10,7 @@ WARNING: Performance, disk usage, functionality, stability, security, etc. are n
 
 1. A `read_only` file system is enabled.
   - So any specified `F2B_LOG_TARGET` will be written to `/data` directory.
-  - After configurations are changed you will need to rerun `docker compose up -d` instead of just restarting.
+  - After configurations change you need to rerun `docker compose up -d` instead of just restarting.
   - `fail2ban.env` was removed. You now need to specify each variable at the `arg` section in `compose.yml`.
   - A new variable `F2B_NO_DEB_DEFAULTS` was added. You can set any non-empty value to `F2B_NO_DEB_DEFAULTS` then `defaults-debian.conf` will be removed.
 

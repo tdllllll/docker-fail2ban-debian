@@ -43,7 +43,8 @@ jobs:
         with:
           package-name: "fail2ban"
           package-type: "container"
-          min-versions-to-keep: ${{ env.KEEP }}
+          # Hardcoding 17 for now
+          min-versions-to-keep: 17
 
       - name: Delete old Docker Hub versions
         run: |

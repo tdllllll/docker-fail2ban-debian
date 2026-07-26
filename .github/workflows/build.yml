@@ -108,7 +108,7 @@ jobs:
             org.opencontainers.image.vendor=tdllllll
 
       - name: Delete previous edge images
-        # We are now using env.TARGET_TAG == '' to determine an 'edge' push
+        # We are now relying on env.TARGET_TAG == '' to determine an 'edge' push
         if: env.TARGET_TAG == ''
         run: |
           set -e
