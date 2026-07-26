@@ -14,7 +14,9 @@ on:
   pull_request:
 
 env:
-  BUILD_TAG: fail2ban:edge
+  BUILD_TAG: fail2ban:test
+  # Use latest since edge will be deleted
+  IMAGE_NAME: tdllllll/fail2ban:latest
   CONTAINER_NAME: fail2ban
 
 jobs:
@@ -51,7 +53,7 @@ jobs:
           bash ./deploy.sh
         working-directory: test
         env:
-          FAIL2BAN_IMAGE: ${{ env.BUILD_TAG }}
+          FAIL2BAN_IMAGE: ${{ env.IMAGE_NAME }}
           FAIL2BAN_CONTAINER: ${{ env.CONTAINER_NAME }}
           IPTABLES_MODE: ${{ matrix.iptables }}
       -
@@ -68,5 +70,5 @@ jobs:
           docker compose logs
         working-directory: test
         env:
-          FAIL2BAN_IMAGE: ${{ env.BUILD_TAG }}
+          FAIL2BAN_IMAGE: ${{ env.IMAGE_NAME }}
           FAIL2BAN_CONTAINER: ${{ env.CONTAINER_NAME }}

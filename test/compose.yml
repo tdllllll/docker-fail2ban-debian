@@ -10,9 +10,9 @@ services:
         F2B_LOG_TARGET: "STDOUT"
         F2B_LOG_LEVEL: "INFO"
         F2B_DB_PURGE_AGE: "1d"
-        IPTABLES_MODE: ${IPTABLES_MODE}
+        IPTABLES_MODE: ${IPTABLES_MODE:-auto}
         F2B_NO_DEB_DEFAULTS: ""
-        FAIL2BAN_IMAGE: ${FAIL2BAN_IMAGE}
+        FAIL2BAN_IMAGE: ${FAIL2BAN_IMAGE:-tdllllll/fail2ban:edge}
     container_name: ${FAIL2BAN_CONTAINER:-fail2ban}
     network_mode: host
     cap_add:
