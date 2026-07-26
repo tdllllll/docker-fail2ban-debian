@@ -48,7 +48,7 @@ jobs:
       -
         name: Start
         run: |
-          docker compose up -d
+          bash ./deploy.sh
         working-directory: test
         env:
           FAIL2BAN_IMAGE: ${{ env.BUILD_TAG }}

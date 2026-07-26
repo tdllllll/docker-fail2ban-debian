@@ -18,15 +18,6 @@ ENV TZ=${TZ} \
 RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
-# Init
-RUN mkdir -p \
-    /data/run \
-    /data/lib \
-    /data/db \
-    /data/action.d \
-    /data/filter.d \
-    /data/jail.d
-
 # Fail2ban conf
 RUN sed -i "s|logtarget =.*|logtarget = /data/${F2B_LOG_TARGET#/}|g" \
       /etc/fail2ban/fail2ban.conf \

@@ -13,6 +13,7 @@ WARNING: Performance, disk usage, functionality, stability, security, etc. are n
   - After configurations change you need to rerun `docker compose up -d` instead of just restarting.
   - `fail2ban.env` was removed. You now need to specify each variable at the `arg` section in `compose.yml`.
   - A new variable `F2B_NO_DEB_DEFAULTS` was added. You can set any non-empty value to `F2B_NO_DEB_DEFAULTS` then `defaults-debian.conf` will be removed.
+  - The recommended way to compose is now to run `deploy.sh` which helps initialize the working directory. (You may need to `chmod +x` and use `sudo` when running it.)
 
 ## Credits
 
